@@ -1,0 +1,1 @@
+Calculadoras para el cálculo del perfil de irradiancia en geometría plana. Contiene luz directa perpendicular, luz directa oblicua, luz difusa y calculadoras gráficas combinadas que contienen plots x vs y y mapas de color.
