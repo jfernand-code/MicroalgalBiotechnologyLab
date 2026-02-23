@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PBR Light Simulator - Corrected Labels</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .main-header { text-align: center; margin-bottom: 20px; border-bottom: 4px solid #27ae60; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1500px; margin: 0 auto; }
+        .simulator-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .controls { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e9ecef; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        label { display: block; font-size: 0.85em; font-weight: bold; color: #495057; margin-bottom: 4px; }
+        input[type="number"], input[type="range"] { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
+        canvas { width: 100%; height: auto; border: 1px solid #eee; border-radius: 8px; background: white; }
+        .formula-tag { background: #2c3e50; color: #ecf0f1; padding: 10px; border-radius: 6px; font-family: serif; font-size: 0.9em; text-align: center; margin-top: 10px; }
+        .result-panel { margin-top: 15px; padding: 15px; background: #e8f4fd; border-radius: 8px; border-left: 5px solid #3498db; text-align: center; }
+        .result-val { font-size: 1.4em; font-weight: bold; color: #2c3e50; }
+        .attribution { text-align: center; margin-top: 30px; font-size: 0.8em; color: #888; border-top: 1px solid #ddd; padding-top: 15px; }
+        span.val { color: #27ae60; font-weight: bold; }
+        h3 { margin-top: 0; color: #2c3e50; border-left: 5px solid #27ae60; padding-left: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="main-header">
+    <h1>PBR Light Profile Simulator</h1>
+    <p>Direct vs. Diffuse Models with Average Irradiance (I<sub>av</sub>) Calculation</p>
+</div>
+
+<div class="dashboard">
+    <div class="simulator-card">
+        <h3>1. Direct Light Model</h3>
+        <div class="controls">
+            <div class="input-row">
+                <div><label>I₀ (µmol/m²s)</label><input type="number" id="io1" value="1000" oninput="sync(1)"></div>
+                <div><label>kₐ (m²/g)</label><input type="number" id="ka1" value="0.1" step="0.01" oninput="sync(1)"></div>
+            </div>
+            <div class="input-row">
+                <div><label>Cᵦ (g/m³)</label><input type="number" id="cb1" value="500" oninput="sync(1)"></div>
+                <div><label>L (Depth, m)</label><input type="number" id="L1" value="0.2" step="0.01" oninput="sync(1)"></div>
+            </div>
+            <label>α (Incidence Angle: <span id="v1" class="val">0</span>º)</label>
+            <input type="range" id="alpha" min="0" max="85" value="0" oninput="drawAll()">
+            <div class="formula-tag">I<sub>p</sub>(x) = I<sub>o</sub> · e<sup>[-k<sub>a</sub>C<sub>b</sub>x/cos(α)]</sup></div>
+        </div>
+        <canvas id="canvas1" width="650" height="520"></canvas>
+        <div class="result-panel">
+            <label>Average Irradiance (I<sub>av</sub>)</label>
+            <div id="iav1" class="result-val">0.0</div>
+            <small>µmol/m²s</small>
+        </div>
+    </div>
+
+    <div class="simulator-card">
+        <h3>2. Diffuse Light Model</h3>
+        <div class="controls">
+            <div class="input-row">
+                <div><label>I₀ (µmol/m²s)</label><input type="number" id="io2" value="1000" oninput="sync(2)"></div>
+                <div><label>kₐ (m²/g)</label><input type="number" id="ka2" value="0.1" step="0.01" oninput="sync(2)"></div>
+            </div>
+            <div class="input-row">
+                <div><label>Cᵦ (g/m³)</label><input type="number" id="cb2" value="500" oninput="sync(2)"></div>
+                <div><label>L (Depth, m)</label><input type="number" id="L2" value="0.2" step="0.01" oninput="sync(2)"></div>
+            </div>
+            <div class="input-row">
+                <div><label>α₁ (<span id="v2" class="val">-30</span>º)</label><input type="range" id="a1" min="-90" max="0" value="-30" oninput="drawAll()"></div>
+                <div><label>α₂ (<span id="v3" class="val">30</span>º)</label><input type="range" id="a2" min="0" max="90" value="30" oninput="drawAll()"></div>
+            </div>
+            <div class="formula-tag">I<sub>p</sub>(x) = [I<sub>o</sub>/(α₂-α₁)] · ∫ e<sup>-u</sup> dα</div>
+        </div>
+        <canvas id="canvas2" width="650" height="520"></canvas>
+        <div class="result-panel">
+            <label>Average Irradiance (I<sub>av</sub>)</label>
+            <div id="iav2" class="result-val">0.0</div>
+            <small>µmol/m²s</small>
+        </div>
+    </div>
+</div>
+
+<div class="attribution">
+    Designed by <strong>Jose María Fernández Sevilla - UAL</strong> | © 2026
+</div>
+
+<script>
+    const c1 = document.getElementById('canvas1');
+    const ctx1 = c1.getContext('2d');
+    const c2 = document.getElementById('canvas2');
+    const ctx2 = c2.getContext('2d');
+
+    function sync(origin) {
+        const fields = ['io', 'ka', 'cb', 'L'];
+        fields.forEach(f => {
+            document.getElementById(f + (origin === 1 ? '2' : '1')).value = document.getElementById(f + origin).value;
+        });
+        drawAll();
+    }
+
+    function integratePoint(io, ka, cb, x, a1R, a2R) {
+        let range = a2R - a1R;
+        if (range <= 0.001) return io * Math.exp(-ka * cb * x / Math.cos(a2R));
+        let sum = 0; let steps = 30; let d = range / steps;
+        for (let i = 0; i <= steps; i++) {
+            let a = a1R + (i * d);
+            let t = Math.exp(-(ka * cb * x) / Math.cos(a));
+            sum += (i === 0 || i === steps) ? t/2 : t;
+        }
+        return (io / range) * sum * d;
+    }
+
+    function drawPlot(ctx, io, ka, cb, L, type, a1R, a2R) {
+        ctx.clearRect(0, 0, 650, 520);
+        const sX = 100, sY = 80, bW = 260, bH = 360; // Fixed positions
+        
+        for(let i=0; i<100; i++) {
+            let xV = (i/100)*L;
+            let Ip = (type === 'dir') ? io * Math.exp(-(ka*cb*xV)/Math.cos(a1R)) : integratePoint(io, ka, cb, xV, a1R, a2R);
+            let r = Ip/io;
+            ctx.fillStyle = `rgb(${Math.floor(245*r+10)}, ${Math.floor(180*r+60)}, 10)`;
+            ctx.fillRect(sX, sY + (i*(bH/100)), bW, (bH/100)+1);
+        }
+
+        ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2; ctx.strokeRect(sX, sY, bW, bH);
+        
+        // 3D Side
+        ctx.fillStyle = "rgba(0,0,0,0.1)"; 
+        ctx.beginPath(); ctx.moveTo(sX+bW, sY); ctx.lineTo(sX+bW+40, sY-20); ctx.lineTo(sX+bW+40, sY+bH-20); ctx.lineTo(sX+bW, sY+bH); ctx.fill(); ctx.stroke();
+
+        // 5 Levels
+        const marks = [0, 0.25, 0.5, 0.75, 1];
+        marks.forEach(m => {
+            let xV = m*L; let yP = sY + (m*bH);
+            let Ip = (type === 'dir') ? io * Math.exp(-(ka*cb*xV)/Math.cos(a1R)) : integratePoint(io, ka, cb, xV, a1R, a2R);
+            
+            ctx.beginPath(); ctx.setLineDash([2,2]); ctx.strokeStyle = "rgba(0,0,0,0.4)";
+            ctx.moveTo(sX+bW, yP); ctx.lineTo(sX+bW+60, yP); ctx.stroke(); ctx.setLineDash([]);
+            
+            let txt = `x:${xV.toFixed(2)}m | Ip:${Ip.toFixed(1)}`;
+            ctx.font = "bold 11px monospace";
+            let tw = ctx.measureText(txt).width;
+            ctx.fillStyle = "white"; ctx.fillRect(sX+bW+65, yP-12, tw+15, 24);
+            ctx.strokeStyle = "#27ae60"; ctx.strokeRect(sX+bW+65, yP-12, tw+15, 24);
+            ctx.fillStyle = "#333"; ctx.textAlign = "left";
+            ctx.fillText(txt, sX+bW+72, yP + 5);
+        });
+        
+        ctx.fillStyle = "#e67e22"; ctx.font = "bold 12px Arial"; ctx.textAlign = "right";
+        ctx.fillText("Surface", sX-10, sY+5); ctx.fillText(`Bottom`, sX-10, sY+bH+5);
+    }
+
+    function drawAll() {
+        const io = parseFloat(document.getElementById('io1').value) || 0;
+        const ka = parseFloat(document.getElementById('ka1').value) || 0;
+        const cb = parseFloat(document.getElementById('cb1').value) || 0;
+        const L = parseFloat(document.getElementById('L1').value) || 0;
+        const aDir = parseFloat(document.getElementById('alpha').value);
+        const a1R = parseFloat(document.getElementById('a1').value) * Math.PI / 180;
+        const a2R = parseFloat(document.getElementById('a2').value) * Math.PI / 180;
+
+        document.getElementById('v1').innerText = aDir;
+        document.getElementById('v2').innerText = document.getElementById('a1').value;
+        document.getElementById('v3').innerText = document.getElementById('a2').value;
+
+        drawPlot(ctx1, io, ka, cb, L, 'dir', aDir*Math.PI/180, 0);
+        drawPlot(ctx2, io, ka, cb, L, 'dif', a1R, a2R);
+
+        let path = L / Math.cos(aDir * Math.PI / 180);
+        let iav1 = (io / (ka * cb * path)) * (1 - Math.exp(-ka * cb * path));
+        document.getElementById('iav1').innerText = isNaN(iav1) ? "0.0" : iav1.toFixed(2);
+
+        // Numerical Iav Diffuse
+        let xSteps = 20; let outerSum = 0; let dx = L/xSteps;
+        for(let j=0; j<=xSteps; j++) {
+            let val = integratePoint(io, ka, cb, j*dx, a1R, a2R);
+            outerSum += (j===0 || j===xSteps) ? val/2 : val;
+        }
+        let iav2 = (1/L) * outerSum * dx;
+        document.getElementById('iav2').innerText = isNaN(iav2) ? "0.0" : iav2.toFixed(2);
+    }
+    drawAll();
+</script>
+</body>
+</html>

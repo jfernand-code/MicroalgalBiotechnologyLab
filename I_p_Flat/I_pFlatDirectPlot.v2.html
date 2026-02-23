@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PBR Light Profile - Comparison Tool</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 30px; }
+        .sidebar { flex: 1; min-width: 320px; background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e9ecef; }
+        .main-content { flex: 2; min-width: 500px; background: white; border-radius: 10px; padding: 10px; }
+        h2 { color: #2c3e50; margin-top: 0; border-bottom: 3px solid #27ae60; padding-bottom: 10px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #495057; }
+        input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
+        .formula-card { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .formula-text { font-family: 'Georgia', serif; font-size: 1.2em; font-style: italic; }
+        canvas { width: 100%; height: auto; border: 1px solid #eee; border-radius: 5px; background: #ffffff; }
+        .legend { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-weight: bold; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .attribution { width: 100%; text-align: center; margin-top: 40px; font-size: 0.85em; color: #6c757d; border-top: 1px solid #dee2e6; padding-top: 20px; }
+        span.val { color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="sidebar">
+        <h2>Parameters</h2>
+        <div class="input-group">
+            <label>I₀ (Incident Light, µmol/m²s)</label>
+            <input type="number" id="io" value="1000" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>kₐ (Extinction Coeff, m²/g)</label>
+            <input type="number" id="ka" value="0.1" step="0.01" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>Cᵦ (Biomass Conc, g/m³)</label>
+            <input type="number" id="cb" value="500" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>L (Depth, m)</label>
+            <input type="number" id="L" value="0.2" step="0.01" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>α (Sun Angle: <span id="alphaDisp" class="val">0</span>º)</label>
+            <input type="range" id="alpha" min="0" max="85" value="0" oninput="draw()">
+        </div>
+
+        <div class="formula-card">
+            <div class="formula-text">
+                I<sub>p</sub>(x) = I<sub>o</sub> · e<sup> [ -k<sub>a</sub>·C<sub>b</sub>·x / cos(α) ]</sup>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <canvas id="pbrCanvas" width="800" height="550"></canvas>
+        <div class="legend">
+            <div class="legend-item"><div style="width:20px; height:3px; background:#3498db;"></div> Reference (α=0°)</div>
+            <div class="legend-item"><div style="width:20px; height:3px; background:#27ae60;"></div> Actual Angle (α)</div>
+        </div>
+    </div>
+
+    <div class="attribution">
+        Developed by <strong>Jose María Fernández Sevilla - UAL</strong><br>
+        Engineering & Simulation Tool | © 2026
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('pbrCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function draw() {
+        const io = parseFloat(document.getElementById('io').value) || 0;
+        const ka = parseFloat(document.getElementById('ka').value) || 0;
+        const cb = parseFloat(document.getElementById('cb').value) || 0;
+        const L = parseFloat(document.getElementById('L').value) || 0;
+        const alphaDeg = parseFloat(document.getElementById('alpha').value);
+        document.getElementById('alphaDisp').innerText = alphaDeg;
+        
+        const alphaRad = alphaDeg * (Math.PI / 180);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const margin = { top: 40, right: 40, bottom: 60, left: 80 };
+        const plotW = canvas.width - margin.left - margin.right;
+        const plotH = canvas.height - margin.top - margin.bottom;
+
+        // Scaling functions
+        const getX = (val) => margin.left + (val / L) * plotW;
+        const getY = (val) => margin.top + plotH - (val / io) * plotH;
+
+        // 1. Draw Axis
+        ctx.strokeStyle = "#2c3e50";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + plotH);
+        ctx.lineTo(margin.left + plotW, margin.top + plotH);
+        ctx.stroke();
+
+        // 2. DRAW REFERENCE LINE (alpha = 0)
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = "#3498db";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i <= 100; i++) {
+            let x_v = (i / 100) * L;
+            let Ip_ref = io * Math.exp(-(ka * cb * x_v) / Math.cos(0));
+            ctx.lineTo(getX(x_v), getY(Ip_ref));
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 3. DRAW ACTIVE CURVE + GRADIENT
+        ctx.beginPath();
+        ctx.moveTo(getX(0), getY(io));
+        for (let i = 0; i <= 100; i++) {
+            let x_v = (i / 100) * L;
+            let Ip = io * Math.exp(-(ka * cb * x_v) / Math.cos(alphaRad));
+            let px = getX(x_v);
+            let py = getY(Ip);
+
+            // Fill gradient strips
+            let ratio = Ip / io;
+            ctx.fillStyle = `rgb(${Math.floor(245 * ratio + 10)}, ${Math.floor(180 * ratio + 60)}, 10)`;
+            ctx.fillRect(px, py, plotW/100 + 1, (margin.top + plotH) - py);
+            
+            ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = "#27ae60";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 4. AXIS LABELS & TICKS
+        ctx.fillStyle = "#2c3e50";
+        ctx.font = "bold 14px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Depth (x) [m]", margin.left + plotW/2, canvas.height - 15);
+        
+        ctx.save();
+        ctx.translate(25, margin.top + plotH/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText("Irradiance (Ip) [µmol/m²s]", 0, 0);
+        ctx.restore();
+
+        // Ticks
+        ctx.font = "11px Arial";
+        for (let i = 0; i <= 5; i++) {
+            let x_val = (i / 5) * L;
+            ctx.fillText(x_val.toFixed(2), getX(x_val), margin.top + plotH + 20);
+            
+            let y_val = (i / 5) * io;
+            ctx.textAlign = "right";
+            ctx.fillText(Math.round(y_val), margin.left - 10, getY(y_val) + 5);
+        }
+    }
+    draw();
+</script>
+</body>
+</html>

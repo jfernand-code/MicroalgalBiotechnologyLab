@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PBR Light Profile - Professional Tool</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 30px; }
+        .sidebar { flex: 1; min-width: 320px; background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e9ecef; }
+        .main-content { flex: 2; min-width: 500px; background: white; border-radius: 10px; padding: 10px; }
+        h2 { color: #2c3e50; margin-top: 0; border-bottom: 3px solid #27ae60; padding-bottom: 10px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #495057; }
+        input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
+        .formula-card { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .formula-text { font-family: 'Georgia', serif; font-size: 1.3em; font-style: italic; }
+        canvas { width: 100%; height: auto; border: 1px solid #eee; border-radius: 5px; background: #ffffff; }
+        .attribution { width: 100%; text-align: center; margin-top: 40px; font-size: 0.85em; color: #6c757d; border-top: 1px solid #dee2e6; padding-top: 20px; }
+        span.val { color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="sidebar">
+        <h2>Parameters</h2>
+        <div class="input-group">
+            <label>I₀ (Incident Light, µmol/m²s)</label>
+            <input type="number" id="io" value="1000" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>kₐ (Extinction Coeff, m²/g)</label>
+            <input type="number" id="ka" value="0.1" step="0.01" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>Cᵦ (Biomass Conc, g/m³)</label>
+            <input type="number" id="cb" value="500" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>L (Depth, m)</label>
+            <input type="number" id="L" value="0.2" step="0.01" oninput="draw()">
+        </div>
+        <div class="input-group">
+            <label>α (Sun Angle: <span id="alphaDisp" class="val">0</span>º)</label>
+            <input type="range" id="alpha" min="0" max="85" value="0" oninput="draw()">
+        </div>
+
+        <div class="formula-card">
+            <div class="formula-text">
+                I<sub>p</sub>(x) = I<sub>o</sub> · e<sup> [ -k<sub>a</sub>·C<sub>b</sub>·x / cos(α) ]</sup>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <canvas id="pbrCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <div class="attribution">
+        Developed by <strong>Jose María Fernández Sevilla - UAL</strong><br>
+        Engineering & Simulation Tool | © 2026
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('pbrCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function draw() {
+        const io = parseFloat(document.getElementById('io').value) || 0;
+        const ka = parseFloat(document.getElementById('ka').value) || 0;
+        const cb = parseFloat(document.getElementById('cb').value) || 0;
+        const L = parseFloat(document.getElementById('L').value) || 0;
+        const alphaDeg = parseFloat(document.getElementById('alpha').value);
+        document.getElementById('alphaDisp').innerText = alphaDeg;
+        
+        const alphaRad = alphaDeg * (Math.PI / 180);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const startX = 180;
+        const startY = 140;
+        const boxW = 350;
+        const boxH = 380;
+        const perspective = 70;
+
+        // SUN
+        const sunX = startX + boxW/2 + Math.tan(alphaRad) * 100;
+        const sunY = 60;
+        ctx.fillStyle = "#f1c40f";
+        ctx.beginPath(); ctx.arc(sunX, sunY, 20, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = "#f39c12";
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.moveTo(sunX, sunY + 25); ctx.lineTo(startX + boxW/2, startY); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // GRADIENT DRAWING (Yellow to Dark Green)
+        const steps = 100;
+        const hStep = boxH / steps;
+        for(let i=0; i<steps; i++) {
+            let x_val = (i/steps) * L;
+            let Ip = io * Math.exp(-(ka * cb * x_val) / Math.cos(alphaRad));
+            let ratio = Ip / io;
+            
+            // NEW COLOR RATIO: 
+            // Surface (ratio 1): RGB(255, 240, 0) -> Yellow
+            // Deep (ratio 0): RGB(10, 60, 10) -> Dark Green
+            let r = Math.floor(245 * ratio + 10);
+            let g = Math.floor(180 * ratio + 60);
+            let b = Math.floor(0 * ratio + 10);
+            
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fillRect(startX, startY + (i * hStep), boxW, hStep + 1);
+        }
+
+        // 3D EDGES
+        ctx.strokeStyle = "#2c3e50";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, boxW, boxH);
+        
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(startX + perspective, startY - perspective/2);
+        ctx.lineTo(startX + boxW + perspective, startY - perspective/2);
+        ctx.lineTo(startX + boxW, startY);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = "rgba(0,40,0,0.3)";
+        ctx.beginPath();
+        ctx.moveTo(startX + boxW, startY);
+        ctx.lineTo(startX + boxW + perspective, startY - perspective/2);
+        ctx.lineTo(startX + boxW + perspective, startY + boxH - perspective/2);
+        ctx.lineTo(startX + boxW, startY + boxH);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        // HORIZONTAL LABELS
+        const marks = [0, 0.25, 0.5, 0.75, 1];
+        ctx.font = "bold 13px Arial";
+        ctx.textAlign = "left";
+
+        marks.forEach(m => {
+            let x_curr = m * L;
+            let y_px = startY + (m * boxH);
+            let Ip = io * Math.exp(-(ka * cb * x_curr) / Math.cos(alphaRad));
+
+            ctx.strokeStyle = "rgba(0,0,0,0.2)";
+            ctx.beginPath(); ctx.moveTo(startX + boxW, y_px); ctx.lineTo(startX + boxW + 40, y_px); ctx.stroke();
+
+            let txt = `x: ${x_curr.toFixed(2)} m | Ip: ${Ip.toFixed(1)}`;
+            let tw = ctx.measureText(txt).width;
+            
+            ctx.fillStyle = "white";
+            ctx.fillRect(startX + boxW + 45, y_px - 12, tw + 15, 24);
+            ctx.strokeStyle = "#27ae60";
+            ctx.strokeRect(startX + boxW + 45, y_px - 12, tw + 15, 24);
+            ctx.fillStyle = "#2c3e50";
+            ctx.fillText(txt, startX + boxW + 52, y_px + 5);
+        });
+
+        ctx.fillStyle = "#e67e22";
+        ctx.textAlign = "right";
+        ctx.fillText("SURFACE (x=0)", startX - 15, startY + 5);
+        ctx.fillText(`BOTTOM (x=${L}m)`, startX - 15, startY + boxH + 5);
+    }
+    draw();
+</script>
+</body>
+</html>
